@@ -86,6 +86,14 @@ AnotherDXF2Shape: Convert DXF to shape and add to QGIS
 
 
 
+
+
+
+
+
+
+
+
 from random import randrange
 from shutil import copyfile
 import uuid
@@ -97,7 +105,7 @@ from shutil import copyfile, move
 
 from qgis.core import *
 from qgis.utils import *
-
+import re
 
 try:
 
@@ -209,7 +217,11 @@ def labelingDXF (qLayer, bFormatText, bUseColor4Point, dblFaktor):
     qLayer.setCustomProperty("labeling/dataDefined/OffsetQuad", "1~~1~~\"anchor\"~~")
     
 
-    qLayer.setCustomProperty("labeling/dataDefined/OffsetXY", "1~~1~~array(\"dx\",-\"dy\")~~")
+
+    sf = "%.1f" % dblFaktor
+    sf = sf + " * \"size\""
+    qLayer.setCustomProperty("labeling/dataDefined/OffsetXY", "1~~1~~array(\"dx\"+" + sf + "/4*sin(if(\"angle\" is NULL,0,\"angle\")*pi()/180),-\"dy\"+" + sf +"/4*cos(if(\"angle\" is NULL,0,\"angle\")*pi()/180))~~")
+
 
 
     qLayer.setCustomProperty("labeling/obstacle","false")
@@ -534,9 +546,31 @@ def DXFImporter(uiParent, sOutForm, listDXFDatNam, zielPfadOrDatei, bZielSave, s
                   
 
             root = QgsProject.instance().layerTreeRoot()
-            grpProjekt = root.addGroup( ProjektName)
+            
+            selected_layers = iface.layerTreeView().selectedLayers()
+            if len(selected_layers) != 0:
+                selected_layer = selected_layers[0]
+            
+                
+                l_node = root.findLayer(selected_layer)
+                l_parent_node = l_node.parent()
 
-            grpProjekt.setExpanded(True)
+
+                index = l_parent_node.children().index(l_node)
+
+                # Add the new group under the selected layer
+                if index > 0:
+                    grpProjekt = l_parent_node.insertGroup(index, ProjektName)
+                else:
+                    # If the selected layer is not in the layer tree, add the new group at the top level
+                    grpProjekt = l_parent_node.addGroup( ProjektName)
+            else:
+                grpProjekt = root.addGroup( ProjektName)
+                
+            
+            
+
+            grpProjekt.setExpanded(uiParent.pasteExpanded.isChecked())
 
            
 
@@ -709,6 +743,11 @@ def EineDXF(uiParent, mLay_crs, bZielSave, sOutForm, grpProjekt,AktList, Kern, A
                 opt = '-append -update --config DXF_ENCODING "' + ogrCharSet + '" '
                 
 
+
+                if mLay_crs.toProj4() != "":
+                    opt = opt + '-a_srs "' + mLay_crs.toProj4() + '" '
+                
+
                 opt = opt + '--config DXF_INCLUDE_RAW_CODE_VALUES TRUE '
                 opt = opt + ('%s -nlt %s %s -sql "select *, ogr_style from entities where OGR_GEOMETRY %s" -nln "%s"') % (AktOpt,v[1],optGCP,v[2], gpkgTable)      
                 if bGen3D:
@@ -843,6 +882,7 @@ def EineDXF(uiParent, mLay_crs, bZielSave, sOutForm, grpProjekt,AktList, Kern, A
                                     AktLayerNam = "NULL" 
                                 else:                                  
                                     AktLayerNam = DecodeDXFUTF(AktLayerNam)
+                                
                                 uiParent.SetAktionGesSchritte(len(unique_values))
                                 uiParent.SetAktionText("Edit Layer: " + AktLayerNam )
                                 uiParent.SetAktionAktSchritt(zL)
@@ -865,6 +905,8 @@ def EineDXF(uiParent, mLay_crs, bZielSave, sOutForm, grpProjekt,AktList, Kern, A
                                     else:
                                         Layer.setSubsetString( "Layer = '" + OrgLayerNam + "'" )
                                     if Layer.featureCount() < 0: Layer=None 
+                                if uiParent.removePenIndexFromGroups.isChecked():
+                                    AktLayerNam = re.sub(r'\d+$', '', AktLayerNam)
 
                                 if myqtVersion == 4:
                                     QgsMapLayerRegistry.instance().addMapLayer(Layer, False)
@@ -961,6 +1003,7 @@ def EineDXF(uiParent, mLay_crs, bZielSave, sOutForm, grpProjekt,AktList, Kern, A
                         if sOutForm == "SHP":
                             Layer.saveNamedStyle (qmldat)
                         else:
+                            Layer.dataProvider().createSpatialIndex() 
                             Layer.saveStyleToDatabase(gpkgTable, gpkgTable, True, "")
 
                     else:
