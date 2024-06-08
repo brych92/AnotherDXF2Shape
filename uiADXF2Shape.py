@@ -50,8 +50,8 @@ try:
     from PyQt5 import QtCore, QtGui, QtWidgets
     from qgis.utils import os, sys
     from PyQt5 import QtGui, uic
-    from PyQt5.QtWidgets import QApplication,QMessageBox, QDialog, QTableWidgetItem, QDialogButtonBox, QFileDialog
-    from PyQt5.QtCore    import QSize, QSettings, QTranslator, qVersion, QCoreApplication, QObject, QEvent
+    from PyQt5.QtWidgets import QApplication,QMessageBox, QDialog, QTableWidgetItem, QDialogButtonBox, QFileDialog, QCheckBox, QLabel, QHBoxLayout
+    from PyQt5.QtCore    import QSize, QSettings, QTranslator, qVersion, QCoreApplication, QObject, QEvent, Qt
 
 except:
     from PyQt4 import QtGui, uic
@@ -61,6 +61,8 @@ except:
 import os
 import webbrowser
 from datetime import date
+
+from numpy import cast
 
 try:
     from .fnc4all import *
@@ -246,8 +248,13 @@ class uiADXF2Shape(QDialog, FORM_CLASS):
         self.chkGPKG.clicked.connect(self.chkGPKG_clicked)
         
         self.chk3D.clicked.connect(self.chk3D_clicked)
-        
+        layout = self.chk3D.parent().layout()
 
+        self.removePenIndexFromGroups = QCheckBox(self.tr("Remove pen index from groups names(for Archicad)"))
+        self.removePenIndexFromGroups.setChecked(True)
+        self.pasteExpanded = QCheckBox(self.tr("Create layerGroups expanded"))
+        layout.insertWidget(0, self.removePenIndexFromGroups)
+        layout.insertWidget(0, self.pasteExpanded)
             
         
         self.listDXFDatNam.currentRowChanged.connect(self.wld4listDXFDatNam)
@@ -746,7 +753,7 @@ class uiADXF2Shape(QDialog, FORM_CLASS):
         if self.chkSHP.isChecked():  out="SHP"
 
 
-        Antw = DXFImporter (self,  out,      self.listDXFDatNam, ZielPfad,        self.chkSHP.isChecked() or self.chkGPKG.isChecked(), self.cbCharSet.currentText(),self.chkCol.isChecked(),self.chkLay.isChecked(), self.chkUseTextFormat.isChecked(), self.chkUseColor4Point.isChecked(), self.chkUseColor4Line.isChecked(), self.chkUseColor4Poly.isChecked(), dblFaktor, self.chkTransform.isChecked(), DreiPassPunkte, self.chk3D.isChecked(), self.txtErsatz4Tab.text())
+        Antw = DXFImporter (self,  out,      self.listDXFDatNam, ZielPfad,        self.chkSHP.isChecked() or self.chkGPKG.isChecked(), self.cbCharSet.currentText(),self.chkCol.isChecked(), self.chkLay.isChecked(), self.chkUseTextFormat.isChecked(), self.chkUseColor4Point.isChecked(), self.chkUseColor4Line.isChecked(), self.chkUseColor4Poly.isChecked(), dblFaktor, self.chkTransform.isChecked(), DreiPassPunkte, self.chk3D.isChecked(), self.txtErsatz4Tab.text())
         self.FormRunning(False) 
           
     def SetAktionText(self,txt):
